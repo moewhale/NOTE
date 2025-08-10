@@ -33,7 +33,7 @@ add_swap() {
         return
     fi
 
-    echo -e "${GREEN}請輸入要添加的 swap 大小（MB），建議為內存的2倍：${NC}"
+    echo -e "${GREEN}請輸入要添加的 swap 大小，建議為內存的2倍：${NC}"
     read -p "大小: " swapsize
 
     # 驗證輸入是否為有效數字
@@ -44,7 +44,7 @@ add_swap() {
 
     echo -e "${GREEN}正在創建 ${swapsize}MB 的 swapfile...${NC}"
     # 創建、設置權限、格式化並啟用 swap
-    fallocate -l "${swapsize}M" /swapfile
+    fallocate -l "${swapsize}" /swapfile
     chmod 600 /swapfile
     mkswap /swapfile
     swapon /swapfile
