@@ -1,90 +1,110 @@
 #!/usr/bin/env bash
-#Blog:https://www.moerats.com/
 
-Green="\033[32m"
-Font="\033[0m"
-Red="\033[31m" 
+# 定義顏色常量
+readonly GREEN='\033[32m'
+readonly RED='\033[31m'
+readonly NC='\033[0m' # No Color
 
-#root权限
-root_need(){
+# --- 檢查函數 ---
+
+# 檢查是否為 root
+check_root() {
     if [[ $EUID -ne 0 ]]; then
-        echo -e "${Red}Error:This script must be run as root!${Font}"
+        echo -e "${RED}錯誤：此腳本必須以 root 身份運行！${NC}"
         exit 1
     fi
 }
 
-#检测ovz
-ovz_no(){
-    if [[ -d "/proc/vz" ]]; then
-        echo -e "${Red}Your VPS is based on OpenVZ，not supported!${Font}"
+# 檢查是否為 OpenVZ
+check_ovz() {
+    if [[ -d /proc/vz ]]; then
+        echo -e "${RED}您的 VPS 基於 OpenVZ，不支持！${NC}"
         exit 1
     fi
 }
 
-add_swap(){
-echo -e "${Green}请输入需要添加的swap，建议为内存的2倍！${Font}"
-read -p "请输入swap数值:" swapsize
+# --- 功能函數 ---
 
-#检查是否存在swapfile
-grep -q "swapfile" /etc/fstab
+# 添加 Swap 空間
+add_swap() {
+    # 如果 swapfile 已存在，直接返回
+    if [[ -f /swapfile ]]; then
+        echo -e "${RED}錯誤：swapfile 已存在。請先刪除現有 swap！${NC}"
+        return
+    fi
 
-#如果不存在将为其创建swap
-if [ $? -ne 0 ]; then
-	echo -e "${Green}swapfile未发现，正在为其创建swapfile${Font}"
-	fallocate -l ${swapsize} /swapfile
-	chmod 600 /swapfile
-	mkswap /swapfile
-	swapon /swapfile
-	echo '/swapfile none swap defaults 0 0' >> /etc/fstab
-         echo -e "${Green}swap创建成功，并查看信息：${Font}"
-         cat /proc/swaps
-         cat /proc/meminfo | grep Swap
-else
-	echo -e "${Red}swapfile已存在，swap设置失败，请先运行脚本删除swap后重新设置！${Font}"
-fi
+    echo -e "${GREEN}請輸入要添加的 swap 大小，建議為內存的2倍：${NC}"
+    read -p "大小: " swapsize
+
+    # 驗證輸入是否為有效數字
+    if ! [[ "$swapsize" =~ ^[0-9]+$ ]]; then
+        echo -e "${RED}錯誤：請輸入有效的數字！${NC}"
+        return
+    fi
+
+    echo -e "${GREEN}正在創建 ${swapsize}MB 的 swapfile...${NC}"
+    # 創建、設置權限、格式化並啟用 swap
+    fallocate -l "${swapsize}" /swapfile
+    chmod 600 /swapfile
+    mkswap /swapfile
+    swapon /swapfile
+
+    # 添加到 fstab 以便開機自動掛載
+    echo '/swapfile none swap defaults 0 0' >> /etc/fstab
+
+    echo -e "${GREEN}Swap 創建成功。當前狀態：${NC}"
+    swapon --show
+    grep SwapTotal /proc/meminfo
 }
 
-del_swap(){
-#检查是否存在swapfile
-grep -q "swapfile" /etc/fstab
+# 刪除 Swap 空間
+remove_swap() {
+    # 如果 swapfile 不存在，直接返回
+    if [[ ! -f /swapfile ]]; then
+        echo -e "${RED}錯誤：未找到 swapfile，無需刪除！${NC}"
+        return
+    fi
 
-#如果存在就将其移除
-if [ $? -eq 0 ]; then
-	echo -e "${Green}swapfile已发现，正在将其移除...${Font}"
-	sed -i '/swapfile/d' /etc/fstab
-	echo "3" > /proc/sys/vm/drop_caches
-	swapoff -a
-	rm -f /swapfile
-    echo -e "${Green}swap已删除！${Font}"
-else
-	echo -e "${Red}swapfile未发现，swap删除失败！${Font}"
-fi
+    echo -e "${GREEN}正在移除 swap...${NC}"
+
+    # 1. 首先從 fstab 中刪除條目
+    sed -i '/swapfile/d' /etc/fstab
+
+    # 2. 停用 swap
+    swapoff /swapfile
+
+    # 3. 最後從文件系統中刪除檔案
+    rm -f /swapfile
+
+    echo -e "${GREEN}Swap 刪除成功。${NC}"
 }
 
-#开始菜单
-main(){
-root_need
-ovz_no
-clear
-echo -e "———————————————————————————————————————"
-echo -e "${Green}Linux VPS一键添加/删除swap脚本${Font}"
-echo -e "${Green}1、添加swap${Font}"
-echo -e "${Green}2、删除swap${Font}"
-echo -e "———————————————————————————————————————"
-read -p "请输入数字 [1-2]:" num
-case "$num" in
-    1)
-    add_swap
-    ;;
-    2)
-    del_swap
-    ;;
-    *)
-    clear
-    echo -e "${Green}请输入正确数字 [1-2]${Font}"
-    sleep 2s
-    main
-    ;;
-    esac
+# --- 主程式 ---
+
+main() {
+    check_root
+    check_ovz
+
+    while true; do
+        clear
+        echo -e "---"
+        echo -e "${GREEN}Linux VPS 一鍵添加/刪除 Swap 腳本${NC}"
+        echo -e "1) 添加 Swap"
+        echo -e "2) 刪除 Swap"
+        echo -e "3) 退出"
+        echo -e "---"
+
+        read -p "請輸入選項 [1-3]: " choice
+
+        case "$choice" in
+            1) add_swap ;;
+            2) remove_swap ;;
+            3) exit 0 ;;
+            *) echo -e "${RED}無效的選項，請重新輸入！${NC}" && sleep 1 ;;
+        esac
+
+        read -p "按 Enter 鍵繼續..."
+    done
 }
+
 main
