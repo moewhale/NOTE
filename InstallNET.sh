@@ -353,10 +353,6 @@ if [[ -n "$tmpDIST" ]]; then
     [[ $? -eq '0' ]] && {
       isDigital="$(echo "$DIST" |grep -o '[\.0-9]\{1,\}' |sed -n '1h;1!H;$g;s/\n//g;$p' |cut -d'.' -f1)";
       [[ -n $isDigital ]] && {
-        [[ "$isDigital" == '7' ]] && DIST='wheezy';
-        [[ "$isDigital" == '8' ]] && DIST='jessie';
-        [[ "$isDigital" == '9' ]] && DIST='stretch';
-        [[ "$isDigital" == '10' ]] && DIST='buster';
         [[ "$isDigital" == '11' ]] && DIST='bullseye';
         [[ "$isDigital" == '12' ]] && DIST='bookworm';
         [[ "$isDigital" == '13' ]] && DIST='trixie';
@@ -371,12 +367,9 @@ if [[ -n "$tmpDIST" ]]; then
     [[ $? -eq '0' ]] && {
       isDigital="$(echo "$DIST" |grep -o '[\.0-9]\{1,\}' |sed -n '1h;1!H;$g;s/\n//g;$p')";
       [[ -n $isDigital ]] && {
-        [[ "$isDigital" == '12.04' ]] && DIST='precise';
-        [[ "$isDigital" == '14.04' ]] && DIST='trusty';
-        [[ "$isDigital" == '16.04' ]] && DIST='xenial';
-        [[ "$isDigital" == '18.04' ]] && DIST='bionic';
         [[ "$isDigital" == '20.04' ]] && DIST='focal';
-        # [[ "$isDigital" == '22.04' ]] && DIST='jammy';
+        [[ "$isDigital" == '22.04' ]] && DIST='jammy';
+        [[ "$isDigital" == '24.04' ]] && DIST='noble';
       }
     }
     LinuxMirror=$(selectMirror "$Relese" "$DIST" "$VER" "$tmpMirror")
